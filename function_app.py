@@ -8,6 +8,7 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 import os
 from dotenv import load_dotenv
+import time
 
 app = func.FunctionApp()
 
@@ -15,6 +16,7 @@ app = func.FunctionApp()
 def timer_trigger(myTimer: func.TimerRequest) -> None:
     if myTimer.past_due:
         logging.info('The timer is past due!')
+    start_time = time.perf_counter()
 
     # Get blob connection string
     load_dotenv()
@@ -69,9 +71,11 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     existing_records = json.loads(raw_records_data.decode('utf-8'))
 
     # Add any new records that are not in existing records to existing records
+    new_record_count = 0
     for new_record in new_records:
         is_new = check_if_new_record(new_record, existing_records)
         if (is_new):
+            new_record_count += 1
             existing_records.insert(0, new_record)
 
     # Add timestamps to all records without a timestamp
@@ -82,7 +86,10 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     # Upload records to blob storage
     blob_client_for_records.upload_blob(json.dumps(existing_records), overwrite=True)
 
-    logging.info('Python timer trigger function executed.')
+    # Log done message
+    end_time = time.perf_counter()
+    elapsed_time = int((end_time - start_time) * 1000) / 1000
+    logging.info(f'Function execution done. Added {new_record_count} new records in {elapsed_time} seconds.')
 
 
 # Checks if the record is in the record list
