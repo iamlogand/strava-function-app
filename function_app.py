@@ -60,13 +60,58 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     }
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
-        logging.error("Failed to get data from Strava")
+        logging.error("Failed to get records from Strava")
         return
-    records_data = json.loads(response.text)
+    new_records = json.loads(response.text)
 
-    # Upload club data to blob storage
-    timestamp = {"timestamp": str(datetime.now())}
-    records_data.insert(0, timestamp)
-    blob_client_for_records.upload_blob(json.dumps(records_data), overwrite=True)
+    # Get existing records from blob storage
+    raw_records_data = blob_client_for_records.download_blob().readall()
+    existing_records = json.loads(raw_records_data.decode('utf-8'))
+
+    # Add any new records that are not in existing records to existing records
+    for new_record in new_records:
+        is_new = check_if_new_record(new_record, existing_records)
+        if (is_new):
+            existing_records.insert(0, new_record)
+
+    # Add timestamps to all records without a timestamp
+    for record in existing_records:
+        if "timestamp" not in record:
+            record["timestamp"] = str(datetime.now())
+
+    # Upload records to blob storage
+    blob_client_for_records.upload_blob(json.dumps(existing_records), overwrite=True)
 
     logging.info('Python timer trigger function executed.')
+
+
+# Checks if the record is in the record list
+def check_if_new_record(record, record_list):
+    is_new = True
+    for r in record_list:
+        if (record["athlete"] == r["athlete"] and record["distance"] == r["distance"] and record["moving_time"] == r["moving_time"] and record["elapsed_time"] == r["elapsed_time"] and record["total_elevation_gain"] == r["total_elevation_gain"] and record["type"] == r["type"] and record["sport_type"] == r["sport_type"]):
+            is_new = False
+    return is_new
+
+
+'''
+Example showing the expected format of a record
+
+{
+    "resource_state": 2,
+    "athlete": {
+        "resource_state": 2,
+        "firstname": "Peter",
+        "lastname": "A."
+    },
+    "name": "Evening Ride",
+    "distance": 7159.6,
+    "moving_time": 1856,
+    "elapsed_time": 2098,
+    "total_elevation_gain": 88.0,
+    "type": "Ride",
+    "sport_type": "Ride",
+    "workout_type":None
+}
+
+'''
