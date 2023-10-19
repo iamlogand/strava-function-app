@@ -6,6 +6,8 @@ import requests
 from datetime import datetime
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+import os
+from dotenv import load_dotenv
 
 app = func.FunctionApp()
 
@@ -15,10 +17,14 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
         logging.info('The timer is past due!')
 
     # Get blob connection string
-    credential = DefaultAzureCredential()
-    key_vault_url = "https://stravafunctionapp-vault.vault.azure.net"
-    key_vault_client = SecretClient(vault_url=key_vault_url, credential=credential)
-    connection_string = key_vault_client.get_secret("BlobConnectionString").value
+    load_dotenv()
+    if "CONNECTION_STRING" in os.environ:
+        connection_string = os.environ["CONNECTION_STRING"]
+    else:
+        credential = DefaultAzureCredential()
+        key_vault_url = "https://stravafunctionapp-vault.vault.azure.net"
+        key_vault_client = SecretClient(vault_url=key_vault_url, credential=credential)
+        connection_string = key_vault_client.get_secret("BlobConnectionString").value
 
     # Create blob clients
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
