@@ -31,7 +31,7 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     # Create blob clients
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
     blob_client_for_tokens = blob_service_client.get_blob_client("secrets", "secrets.json")
-    blob_client_for_records = blob_service_client.get_blob_client("records", "records.json")
+    blob_client_for_records = blob_service_client.get_blob_client("records2", "records.json")
 
     # Get secrets from blob storage
     raw_token_data = blob_client_for_tokens.download_blob().readall()
